@@ -12,21 +12,36 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * * Multiplication & Division
  * * Addition & Subtraction
  *
- * todo - збс! с Блэк-Джеком, Шлюхами, Казино и Map<String, List<ScopeExpression>>
  *
  * todo - testcase - нету пары, есть Закрывающая, но нету Открывающей. ^^^^^^^^^^^^^^^^^^^^^
  * todo - testcase - делить на ноль нельзя - validation. ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
  * todo - testcase - делить на ноль нельзя - execution.
  *       System.out.println(new BigDecimal("100").divide(new BigDecimal("0")));
  *       >> java.lang.ArithmeticException: Division by zero
- * todo - validate - expr start&end with Operator char
- *
  * todo - testcase - Executor.findOperatorIndexesForExpr
+ *
+ * todo - збс! с Блэк-Джеком, Шлюхами, Казино и Map<String, List<ScopeExpression>>
  * todo - option - MathContext(precision, roundingMode)
  * todo - operators levels - make List and easy extendable
+ * todo - remake Operator level to ExprExeInfo
+ *
+ * todo - validate - expr start&end with Operator char
+ *
  * todo - ??? Functions
  *          FunctionDSL
  *          list expression by comma - for function with many arguments
+ *
+ *  ExpressionExecuteResult {
+ *      String originalExpression;
+ *      List<...> executeHistory;
+ *      String result;
+ *      Exception error;
+ *
+ *      // execution part
+ *      String currentExpression;
+ *      List<...> operatorLevels;
+ *
+ *  }
  **/
 public class ExpressionCalculatorTest {
     private final ExpressionCalculator calculator = new MathExpressionCalculatorV2();
