@@ -1,6 +1,6 @@
 package expression.calculator;
 
-import expression.calculator.v2.ExpressionCalculatorV2;
+import expression.calculator.v2.MathExpressionCalculatorV2;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -12,7 +12,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * * Multiplication & Division
  * * Addition & Subtraction
  *
- * todo - rew
  * todo - збс! с Блэк-Джеком, Шлюхами, Казино и Map<String, List<ScopeExpression>>
  *
  * todo - testcase - нету пары, есть Закрывающая, но нету Открывающей. ^^^^^^^^^^^^^^^^^^^^^
@@ -23,30 +22,19 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * todo - validate - expr start&end with Operator char
  *
  * todo - testcase - Executor.findOperatorIndexesForExpr
+ * todo - option - MathContext(precision, roundingMode)
+ * todo - operators levels - make List and easy extendable
+ * todo - ??? Functions
+ *          FunctionDSL
+ *          list expression by comma - for function with many arguments
  **/
 public class ExpressionCalculatorTest {
-    private final ExpressionCalculator calculator = new ExpressionCalculatorV2();
+    private final ExpressionCalculator calculator = new MathExpressionCalculatorV2();
     
     private void test(String expected, String expr) {
         assertEquals(expected, calculator.accept(expr));
     }
     
-    
-    @Test public void fivePlusTwo() { test("7", "5+2"); }
-    
-    @Test public void fivePlusTwoPlusTwo() { test("9", "5+2+2"); }
-    
-    @Test public void fivePlusTwoMinusTwo() { test("5", "5+2-2"); }
-    
-    @Test public void fivePlusTwoMultipleFive() { test("17", "5+2*6"); }
-    
-    @Test public void fivePlusTwoMultipleSixDivideThree() { test("9", "5+2*6/3"); }
-    
-    @Test public void percent1() { test("5", "100%5"); }
-    
-    @Test public void percent2() { test("25", "5*100%5"); }
-    
-    @Test public void percent3() { test("10", "100%(5+5)"); }
     
     @Test public void smart1() { test("10", "2+(3*4-5+(6+4)+(10-7*2))-5"); }
     
@@ -57,15 +45,5 @@ public class ExpressionCalculatorTest {
     @Test public void brackets2() {
         test("56", "2+( ( (1+3)+(4+4)+2 ) + (6+7) )*2");
     }
-    
-    @Test
-    public void bracketsMiss() { test("Error: validation - found brackets (open=4, close=3)", "2+( ( (1+3)+(4+4)+2 ) + 6+7*2"); }
-    
-    @Test public void bracketPairMiss1() { test("Error: validation - open-close bracket pair expected.", ")2+2("); }
-    
-    @Test public void bracketPairMiss2() { test("Error: validation - open-close bracket pair expected.", ")(2+2)("); }
-    
-    @Test
-    public void bracketPairMiss3() { test("Error: validation - open-close bracket pair expected.", ")1+(2+2)+(3"); }
-    
+  
 }

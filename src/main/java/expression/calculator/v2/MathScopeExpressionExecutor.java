@@ -2,10 +2,10 @@ package expression.calculator.v2;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.ToString;
 import lombok.val;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.*;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
@@ -15,36 +15,29 @@ import java.util.stream.Collectors;
 import static expression.calculator.v2.ExpressionValidator.ERR_PREF;
 import static expression.calculator.v2.MathScopeExpressionExecutor.MathOperator.*;
 
-// "10-5+3*10/2"
-// "10-5+3*5"
-// "10-5+15"
-// "5+15"
+
 public class MathScopeExpressionExecutor {
-    public static void main(String[] args) {
-        val src = "2/2-5+3*10/4-2";
-//        val src = "-4+7.5-2";
-//        val src = "3.5-2";
-        System.out.println("src = " + src);
-        val executor = new MathScopeExpressionExecutor();
-        executor.execute(new ScopeExpression("${expr_00}", src));
-    }
     
     public BigDecimal execute(ScopeExpression expression) {
-        val exprInfo = ExprExeInfo.of(expression.expression);
+        return (expression.executionResult = this.execute(expression.expression));
+    }
+    
+    public BigDecimal execute(String expression) {
+        val exprInfo = ExprExeInfo.of(expression);
         
         // if expression doesn't contains operator(suddenly) return expression as number.
         if (exprInfo.getAllLevelsOperatorCount() == 0) return new BigDecimal(exprInfo.expressionCurrent);
         
-        executeAllOperatorsOnLevelV2(exprInfo, ExecutionOperatorLevel.HIGH);
-        executeAllOperatorsOnLevelV2(exprInfo, ExecutionOperatorLevel.MIDDLE);
-        executeAllOperatorsOnLevelV2(exprInfo, ExecutionOperatorLevel.LOW);
+        executeAllOperatorsOnLevel(exprInfo, ExecutionOperatorLevel.HIGH);
+        executeAllOperatorsOnLevel(exprInfo, ExecutionOperatorLevel.MIDDLE);
+        executeAllOperatorsOnLevel(exprInfo, ExecutionOperatorLevel.LOW);
         
-        System.out.println("exprInfo.expressionOriginal = " + exprInfo.expressionOriginal);
-        System.out.println("exprInfo.expressionCurrent  = " + exprInfo.expressionCurrent);
+        System.out.println("finish exprInfo.expressionOriginal = " + exprInfo.expressionOriginal);
+        System.out.println("finish exprInfo.expressionCurrent  = " + exprInfo.expressionCurrent);
         return new BigDecimal(exprInfo.expressionCurrent);
     }
     
-    private void executeAllOperatorsOnLevelV2(ExprExeInfo exprInfo, ExecutionOperatorLevel level) {
+    private void executeAllOperatorsOnLevel(ExprExeInfo exprInfo, ExecutionOperatorLevel level) {
         while (level.operatorCounterGetter.apply(exprInfo) != 0) {
             val currExpr = exprInfo.expressionCurrent;
             
@@ -68,7 +61,6 @@ public class MathScopeExpressionExecutor {
             System.out.println("leftNum  = " + leftNum);
             System.out.println("rightNum = " + rightNum);
             System.out.println("exprInfo.expressionCurrent =  " + exprInfo.expressionCurrent);
-            
         }
     }
     
@@ -109,7 +101,7 @@ public class MathScopeExpressionExecutor {
         private static BigDecimal parseNumber(String expr, int startIndex, int endIndex) {
             return new BigDecimal(expr.substring(startIndex, endIndex));
         }
-
+        
         // todo - for remove?
 //        private static boolean isNumberChar(char c) {
 //            return NUMBERS_CHARS.contains(c);
@@ -176,12 +168,6 @@ public class MathScopeExpressionExecutor {
         private final Consumer<ExprExeInfo> operatorCounterDecrementFunc;
     }
     
-    /**
-     * Operators priority: (1 - max priority)
-     * 2 - ^  - exponent
-     * 3 - /* - Multiplication/Division
-     * 4 - +- - Addition/Subtraction
-     */
     @RequiredArgsConstructor
     @Getter
     enum MathOperator {
@@ -189,7 +175,7 @@ public class MathScopeExpressionExecutor {
         PERCENT('%', MathOperator::percent),
         
         MULTIPLICATION('*', BigDecimal::multiply),
-        DIVISION('/', BigDecimal::divide),
+        DIVISION('/', MathOperator::divide),
         
         PLUS('+', BigDecimal::add),
         MINUS('-', BigDecimal::subtract),
@@ -210,13 +196,17 @@ public class MathScopeExpressionExecutor {
         
         
         public static BigDecimal percent(BigDecimal base, BigDecimal percent) {
-            return base.divide(HUNDRED).multiply(percent);
+            return base.divide(HUNDRED, MathContext.DECIMAL128).multiply(percent);
         }
         
         public static BigDecimal exponent(BigDecimal base, BigDecimal power) {
             if (power.toString().contains("."))
                 throw new ArithmeticException(ERR_PREF + "power must integer, not decimal. power = " + power);
             return base.pow(power.toBigInteger().intValue());
+        }
+        
+        public static BigDecimal divide(BigDecimal dividend, BigDecimal divisor) {
+            return dividend.divide(divisor, MathContext.DECIMAL128);
         }
         
         
@@ -233,11 +223,11 @@ public class MathScopeExpressionExecutor {
         }
     }
     
-    @ToString public record ExpressionExecuteStep(
+    public record ExpressionExecuteStep(
             String expressionBefore, String expressionAfter,
             MathOperator exeOperator,
             BigDecimal exeLeftNumber, BigDecimal exeRightNumber,
             BigDecimal exeResult) {}
     
-    @ToString public record OperatorIndexes(int prevOperatorIndex, int currOperatorIndex, int nextOperatorIndex) {}
+    public record OperatorIndexes(int prevOperatorIndex, int currOperatorIndex, int nextOperatorIndex) {}
 }

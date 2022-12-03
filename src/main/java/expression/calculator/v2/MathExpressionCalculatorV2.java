@@ -13,7 +13,7 @@ import static expression.calculator.v2.ExpressionValidator.ERR_PREF;
 
 @AllArgsConstructor
 @Setter
-public class ExpressionCalculatorV2 implements ExpressionCalculator {
+public class MathExpressionCalculatorV2 implements ExpressionCalculator {
     private MathScopeExpressionParser parser;
     private MathScopeExpressionExecutor executor;
     private ExpressionValidator validator;
@@ -21,7 +21,7 @@ public class ExpressionCalculatorV2 implements ExpressionCalculator {
     private LinkedHashMap<String, LinkedHashMap<String, ScopeExpression>> history = new LinkedHashMap<>();
     
     
-    public ExpressionCalculatorV2() {
+    public MathExpressionCalculatorV2() {
         this.parser = new MathScopeExpressionParser();
         this.executor = new MathScopeExpressionExecutor();
         this.validator = new ExpressionValidator();
@@ -36,7 +36,7 @@ public class ExpressionCalculatorV2 implements ExpressionCalculator {
         Collections.reverse(expressions);
         
         for (val expr : expressions) {
-            expr.executionResult = executor.execute(expr);
+            executor.execute(expr);
             applyExprResultForAllDependsOn(expr, expressions);
         }
         
