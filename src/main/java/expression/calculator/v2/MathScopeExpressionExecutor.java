@@ -1,6 +1,9 @@
 package expression.calculator.v2;
 
-import lombok.*;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.ToString;
+import lombok.val;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -9,6 +12,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static expression.calculator.v2.ExpressionValidator.ERR_PREF;
 import static expression.calculator.v2.MathScopeExpressionExecutor.MathOperator.*;
 
 // "10-5+3*10/2"
@@ -31,7 +35,7 @@ public class MathScopeExpressionExecutor {
         // if expression doesn't contains operator(suddenly) return expression as number.
         if (exprInfo.getAllLevelsOperatorCount() == 0) return new BigDecimal(exprInfo.expressionCurrent);
         
-        // step 1 - find all middle-Level operators
+        executeAllOperatorsOnLevelV2(exprInfo, ExecutionOperatorLevel.HIGH);
         executeAllOperatorsOnLevelV2(exprInfo, ExecutionOperatorLevel.MIDDLE);
         executeAllOperatorsOnLevelV2(exprInfo, ExecutionOperatorLevel.LOW);
         
@@ -45,15 +49,17 @@ public class MathScopeExpressionExecutor {
             val currExpr = exprInfo.expressionCurrent;
             
             val indexes = findOperatorIndexesForExpr(currExpr, level.operators);
-            val operator = MathOperator.of(currExpr.charAt(indexes.currOperatorIndex));
-            val leftNum = Numbers.parseNumber(currExpr, indexes.prevOperatorIndex, indexes.currOperatorIndex);
+            val prevNumStartIndex = (indexes.prevOperatorIndex == 0) ? 0 : indexes.prevOperatorIndex + 1;
+            
+            val leftNum = Numbers.parseNumber(currExpr, prevNumStartIndex, indexes.currOperatorIndex);
             val rightNum = Numbers.parseNumber(currExpr, indexes.currOperatorIndex + 1, indexes.nextOperatorIndex);
-            val rsl = operator.func.apply(leftNum, rightNum);
+            val operator = MathOperator.of(currExpr.charAt(indexes.currOperatorIndex));
+            val rsl = operator.apply(leftNum, rightNum);
             
             level.operatorCounterDecrementFunc.accept(exprInfo);
             // escape case: prev == 1 -- it's means prevOperator is Minus for Negative number.
-            val prev = indexes.prevOperatorIndex == 0 ? 0 : indexes.prevOperatorIndex + 1;
-            exprInfo.expressionCurrent = currExpr.substring(0, prev) + rsl + currExpr.substring(indexes.nextOperatorIndex);
+            exprInfo.expressionCurrent =
+                    currExpr.substring(0, prevNumStartIndex) + rsl + currExpr.substring(indexes.nextOperatorIndex);
             
             exprInfo.executionHistory.add(new ExpressionExecuteStep(
                     currExpr, exprInfo.expressionCurrent, operator, leftNum, rightNum, rsl));
@@ -79,7 +85,8 @@ public class MathScopeExpressionExecutor {
             
             char prevChar = (i == 0) ? 0 : expr.charAt(i - 1);
             // skip Minus operator char after other operator - case: negative number
-            if (currCharOperator == MINUS && (MathScopeExpressionExecutor.MathOperator.isOperatorChar(prevChar) || prevChar == 0))
+            if (currCharOperator == MINUS
+                    && (MathScopeExpressionExecutor.MathOperator.isOperatorChar(prevChar) || prevChar == 0))
                 continue;
             
             if (curr == -1 && operators.contains(currCharOperator)) {
@@ -97,20 +104,20 @@ public class MathScopeExpressionExecutor {
         return new OperatorIndexes(prev, curr, next);
     }
     
-
+    
     private static class Numbers {
         private static BigDecimal parseNumber(String expr, int startIndex, int endIndex) {
             return new BigDecimal(expr.substring(startIndex, endIndex));
         }
-    
-    
-        private static boolean isNumberChar(char c) {
-            return NUMBERS_CHARS.contains(c);
-        }
-    
-        private static final Set<Character> NUMBERS_CHARS = "0123456789."
-                .chars().mapToObj(c -> (char) c)
-                .collect(Collectors.toUnmodifiableSet());
+
+        // todo - for remove?
+//        private static boolean isNumberChar(char c) {
+//            return NUMBERS_CHARS.contains(c);
+//        }
+
+//        private static final Set<Character> NUMBERS_CHARS = "0123456789."
+//                .chars().mapToObj(c -> (char) c)
+//                .collect(Collectors.toUnmodifiableSet());
     }
     
     @Getter
@@ -119,7 +126,7 @@ public class MathScopeExpressionExecutor {
         private String expressionCurrent;
         private final List<ExpressionExecuteStep> executionHistory = new ArrayList<>();
         
-        //        private int highestLevelOperatorsCount = 0; // for expand version
+        private int highestLevelOperatorsCount = 0;
         private int middleLevelOperatorsCount = 0;
         private int lowLevelOperatorsCount = 0;
         
@@ -127,42 +134,40 @@ public class MathScopeExpressionExecutor {
             this.expressionOriginal = expression;
         }
         
+        public int decrementHighestLevelOperatorsCount() {return this.highestLevelOperatorsCount--;}
+        
         public int decrementMiddleLevelOperatorsCount() {return this.middleLevelOperatorsCount--;}
         
         public int decrementLowLevelOperatorsCount() {return this.lowLevelOperatorsCount--;}
         
-        public int getAllLevelsOperatorCount() { return middleLevelOperatorsCount + lowLevelOperatorsCount;}
+        public int getAllLevelsOperatorCount() { return middleLevelOperatorsCount + lowLevelOperatorsCount + highestLevelOperatorsCount;}
         
-        // todo - test - что-то я не уверен что оо збс работает, но да оно работает, НО КАК?!
         public static ExprExeInfo of(String exp) {
             val rsl = new ExprExeInfo(exp);
             rsl.expressionCurrent = exp;
-            // todo - collect prev char and if curr == MINUS >> prev is Operator?
-            //  -> true : skip Minus operator(because it's a negative num)
-            //  -> false : it's Minus operator
+            
+            boolean isPrevCharOperator = false;
             for (int i = 0; i < exp.length(); i++) {
-                val operator = MathOperator.of(exp.charAt(i));
-                if (operator == null) continue;
+                char c = exp.charAt(i);
+                val operator = MathOperator.of(c);
+                if (operator == null) {
+                    isPrevCharOperator = false;
+                    continue;
+                }
+                if (operator == EXPONENT || operator == PERCENT) rsl.highestLevelOperatorsCount++;
                 if (operator == MULTIPLICATION || operator == DIVISION) rsl.middleLevelOperatorsCount++;
-                if (operator == PLUS || operator == MINUS) rsl.lowLevelOperatorsCount++;
+                if (operator == PLUS || (operator == MINUS && !isPrevCharOperator)) rsl.lowLevelOperatorsCount++;
+                isPrevCharOperator = true;
             }
             return rsl;
         }
     }
     
-    @RequiredArgsConstructor
-    private static class ExpressionExecuteStep {
-        private final String expressionBefore, expressionAfter;
-        
-        private final MathOperator exeOperator;
-        
-        private final BigDecimal exeLeftNumber,exeRightNumber, exeResult;
-    }
     
     @RequiredArgsConstructor
     private enum ExecutionOperatorLevel {
         
-        //        HIGH(),
+        HIGH(Set.of(EXPONENT, PERCENT), ExprExeInfo::getHighestLevelOperatorsCount, ExprExeInfo::decrementHighestLevelOperatorsCount),
         MIDDLE(Set.of(MULTIPLICATION, DIVISION), ExprExeInfo::getMiddleLevelOperatorsCount, ExprExeInfo::decrementMiddleLevelOperatorsCount),
         LOW(Set.of(PLUS, MINUS), ExprExeInfo::getLowLevelOperatorsCount, ExprExeInfo::decrementLowLevelOperatorsCount);
         
@@ -180,7 +185,8 @@ public class MathScopeExpressionExecutor {
     @RequiredArgsConstructor
     @Getter
     enum MathOperator {
-//        EXPONENT(),
+        EXPONENT('^', MathOperator::exponent),
+        PERCENT('%', MathOperator::percent),
         
         MULTIPLICATION('*', BigDecimal::multiply),
         DIVISION('/', BigDecimal::divide),
@@ -200,6 +206,19 @@ public class MathScopeExpressionExecutor {
         
         private static final Set<Character> operatorChars = operators.keySet();
         
+        private static final BigDecimal HUNDRED = new BigDecimal("100");
+        
+        
+        public static BigDecimal percent(BigDecimal base, BigDecimal percent) {
+            return base.divide(HUNDRED).multiply(percent);
+        }
+        
+        public static BigDecimal exponent(BigDecimal base, BigDecimal power) {
+            if (power.toString().contains("."))
+                throw new ArithmeticException(ERR_PREF + "power must integer, not decimal. power = " + power);
+            return base.pow(power.toBigInteger().intValue());
+        }
+        
         
         public static boolean isOperatorChar(char c) {
             return operatorChars.contains(c);
@@ -208,15 +227,17 @@ public class MathScopeExpressionExecutor {
         public static MathOperator of(char c) {
             return operators.get(c);
         }
+        
+        public BigDecimal apply(BigDecimal left, BigDecimal right) {
+            return this.func.apply(left, right);
+        }
     }
     
-    @ToString
-    @RequiredArgsConstructor
-    static class OperatorIndexes {
-        /** If not found, default = 0 */
-        private final int prevOperatorIndex;
-        private final int currOperatorIndex;
-        /** If not found, default = expression length */
-        private final int nextOperatorIndex;
-    }
+    @ToString public record ExpressionExecuteStep(
+            String expressionBefore, String expressionAfter,
+            MathOperator exeOperator,
+            BigDecimal exeLeftNumber, BigDecimal exeRightNumber,
+            BigDecimal exeResult) {}
+    
+    @ToString public record OperatorIndexes(int prevOperatorIndex, int currOperatorIndex, int nextOperatorIndex) {}
 }

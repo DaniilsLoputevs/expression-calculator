@@ -6,8 +6,8 @@ plugins {
 
 group ="org.example"
 version = "1.0-SNAPSHOT"
+val codeEncoding = "UTF-8"
 
-tasks.withType<Javadoc>() { options.encoding = "UTF-8" }
 
 repositories {
     mavenCentral()
@@ -25,15 +25,9 @@ dependencies {
     testAnnotationProcessor ("org.projectlombok:lombok:1.18.24")
 }
 tasks {
-    javadoc {
-        options.encoding = "UTF-8"
-    }
-    compileJava {
-        options.encoding = "UTF-8"
-    }
-    compileTestJava {
-        options.encoding = "UTF-8"
-    }
+    javadoc { options.encoding = codeEncoding }
+    compileJava { options.encoding = codeEncoding }
+    compileTestJava { options.encoding = codeEncoding }
     test {
         useJUnitPlatform()
 
@@ -42,5 +36,10 @@ tasks {
         testLogging {
             events("passed")
         }
+    }
+}
+sourceSets {
+    main {
+        java.srcDir("src/main/java")
     }
 }
